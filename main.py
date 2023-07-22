@@ -1,4 +1,4 @@
-import json
+import atexit
 from typing import Callable
 
 import pika
@@ -44,6 +44,9 @@ class CheckoutProducer:
         except Exception as e:
             print(e)
 
+    def exit_handler(self):
+        self.connection.close()
+
 
 class CheckoutService:
     channel = None
@@ -52,6 +55,7 @@ class CheckoutService:
     def __init__(self):
         self._connect()
         self.producer = CheckoutProducer()
+        atexit.register(self.producer.exit_handler)
 
     def _connect(self):
         # Connection parameters
@@ -60,12 +64,12 @@ class CheckoutService:
         self.connection = pika.BlockingConnection(connection_params)
         self.channel = self.connection.channel()
 
-    def _listen_queue(self, checkout_queue: str, callback: Callable):
+    def _listen_queue(self, queue_name: str, callback: Callable):
         # Declare a queue named 'checkout_queue'
-        self.channel.queue_declare(queue='checkout_queue')
+        self.channel.queue_declare(queue=queue_name)
 
         # Specify the callback function to be called when a message is received
-        self.channel.basic_consume(queue='checkout_queue',
+        self.channel.basic_consume(queue=queue_name,
                                    on_message_callback=callback,
                                    auto_ack=True)
         print(' [*] Waiting for messages. To exit, press CTRL+C')
@@ -82,12 +86,11 @@ class CheckoutService:
         self._listen_queue("checkout_queue",
                            callback=self._pass_to_delivery_and_banking)
 
+    def exit_handler(self):
+        self.connection.close()
+
 
 if __name__ == '__main__':
     checkout_service = CheckoutService()
+    atexit.register(checkout_service.exit_handler)
     checkout_service.start()
-
-
-
-
-

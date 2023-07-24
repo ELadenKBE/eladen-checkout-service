@@ -3,6 +3,7 @@ from typing import Callable
 
 import pika
 from decouple import config
+from pika import PlainCredentials
 from pika.exceptions import StreamLostError
 
 
@@ -13,7 +14,11 @@ class CheckoutProducer:
 
     def _connect(self):
         host = config('RABBITMQ_HOST', default=False, cast=str)
-        connection_params = pika.ConnectionParameters(host)
+        username = config('RABBITMQ_USERNAME', default=False, cast=str)
+        password = config('RABBITMQ_PASSWORD', default=False, cast=str)
+        connection_params = pika.ConnectionParameters(
+            host=host, credentials=PlainCredentials(username=username,
+                                                    password=password))
         self.connection = pika.BlockingConnection(connection_params)
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue='delivery_queue')
@@ -60,7 +65,11 @@ class CheckoutService:
     def _connect(self):
         # Connection parameters
         host = config('RABBITMQ_HOST', default=False, cast=str)
-        connection_params = pika.ConnectionParameters(host=host)
+        username = config('RABBITMQ_USERNAME', default=False, cast=str)
+        password = config('RABBITMQ_PASSWORD', default=False, cast=str)
+        connection_params = pika.ConnectionParameters(
+            host=host, credentials=PlainCredentials(username=username,
+                                                    password=password))
         self.connection = pika.BlockingConnection(connection_params)
         self.channel = self.connection.channel()
 

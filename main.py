@@ -16,13 +16,16 @@ class CheckoutProducer:
         host = config('RABBITMQ_HOST', default=False, cast=str)
         username = config('RABBITMQ_USERNAME', default=False, cast=str)
         password = config('RABBITMQ_PASSWORD', default=False, cast=str)
-        connection_params = pika.ConnectionParameters(
-            host=host, credentials=PlainCredentials(username=username,
-                                                    password=password))
-        self.connection = pika.BlockingConnection(connection_params)
-        self.channel = self.connection.channel()
-        self.channel.queue_declare(queue='delivery_queue')
-        self.channel.queue_declare(queue='banking_queue')
+        try:
+            connection_params = pika.ConnectionParameters(
+                host=host, credentials=PlainCredentials(username=username,
+                                                        password=password))
+            self.connection = pika.BlockingConnection(connection_params)
+            self.channel = self.connection.channel()
+            self.channel.queue_declare(queue='delivery_queue')
+            self.channel.queue_declare(queue='banking_queue')
+        except pika.exceptions.AMQPConnectionError:
+            self._connect()
 
     def _publish_dict(self, queue_name: str, message: str):
         self.channel.basic_publish(exchange='',
